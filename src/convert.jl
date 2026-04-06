@@ -5,9 +5,8 @@
 const _ROMAN_VALS = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
 const _ROMAN_SYMS = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
 
-# Core implementation: write the roman numeral for n directly to io.
-# n must be positive; the caller is responsible for validation.
-function _write_roman!(io::IO, n::Int)
+function to_roman!(io, n)
+    n > 0 || throw(ArgumentError("n must be positive, got $n"))
     r = n
     for (v, s) in zip(_ROMAN_VALS, _ROMAN_SYMS)
         while r >= v
@@ -17,12 +16,9 @@ function _write_roman!(io::IO, n::Int)
     end
 end
 
-# Public convenience wrapper — validates n and returns a String.
-# Used in tests and anywhere a String is needed.
-function to_roman(n::Int)
-    n > 0 || throw(ArgumentError("n must be positive, got $n"))
+function to_roman(n)
     io = IOBuffer()
-    _write_roman!(io, n)
+    to_roman!(io, n)
     String(take!(io))
 end
 
@@ -33,7 +29,7 @@ end
 # Throw ArgumentError if `name` is not a valid LaTeX command name.
 # Only ASCII letters [a-zA-Z] are permitted; the TeX tokeniser does not
 # recognise Unicode letters or digits as part of a command name.
-function check_name(name::AbstractString)
+function check_name(name)
     isempty(name) && throw(ArgumentError("LaTeX macro name must not be empty"))
     for c in name
         ('a' <= c <= 'z' || 'A' <= c <= 'Z') ||
@@ -42,16 +38,16 @@ function check_name(name::AbstractString)
 end
 
 # Write \name  (ind == 0)  or  \name@I, \name@II … (ind > 0) to io.
-function _write_macro_name!(io::IO, name::String, ind::Int)
+function _write_macro_name!(io, name, ind)
     write(io, '\\', name)
     if ind > 0
         write(io, '@')
-        _write_roman!(io, ind)
+        to_roman!(io, ind)
     end
 end
 
 # Write \name@out  or  \name@I@out … to io.
-function _write_out_macro_name!(io::IO, name::String, ind::Int)
+function _write_out_macro_name!(io, name, ind)
     _write_macro_name!(io, name, ind)
     write(io, "@out")
 end
@@ -60,17 +56,17 @@ end
 # TeX emitters
 # ---------------------------------------------------------------------------
 
-# Emit:  \def\name@out{%
-#            <escaped, possibly multi-line value>
-#        }%
+# Define the output macro that holds a single scalar value, LaTeX-escaped:
 #
-# Single-pass implementation: iterates over the value string once, writing
-# escaped characters directly to io.  Avoids the split() + per-line
-# escape_latex() calls that the naive version required, eliminating ~37% of
-# total allocation in dumps().
-function _def_out!(io::IO, name::String, ind::Int, value)
-    # Convert to string; JSON null becomes "null" rather than Julia's "nothing".
-    tex_value = value isa Nothing ? "null" : string(value)
+#   \def\name@out{%
+#       <escaped value>
+#   }%
+#
+# Iterates character by character: (1) to apply LATEX_ESCAPES substitutions,
+# (2) to convert \n to %\n (TeX line comment) with indentation. trailing_comma
+# inserts a space before % after a comma, which some engines misparse otherwise.
+function _def_out!(io, name, ind, value)
+    tex_value = string(value)
     write(io, raw"\def")
     _write_out_macro_name!(io, name, ind)
     write(io, "{%")
@@ -94,22 +90,28 @@ function _def_out!(io::IO, name::String, ind::Int, value)
     print(io, "}%")
 end
 
-# Emit:  \let\name@out\relay_macro%
-function _let_out!(io::IO, name::String, ind::Int, relay::Int)
+# Like _def_out! but aliases the output macro to an already-defined sub-command
+# (used for nested objects whose \newcommand block is emitted separately):
+#
+#   \let\name@out\name@I%
+#
+function _let_out!(io, name, ind, relay)
     write(io, raw"\let")
     _write_out_macro_name!(io, name, ind)
     _write_macro_name!(io, name, relay)
     write(io, "%")
 end
 
-# Emit one \ifnum\pdfstrcmp branch per key/index, with a ?? fallback.
-# Nested dicts and vectors are deferred into `to_convert` and emitted as
-# separate \newcommand blocks, referenced via \let.
-function _add_options!(
-    io::IO, name::String, ind::Int,
-    pairs_iter,
-    to_convert::OrderedDict{Int, Any}, index::Ref{Int},
-)
+# Emit the key-dispatch body used inside a \newcommand: one \pdfstrcmp branch
+# per key/index, falling back to ??. Scalars use _def_out!; nested objects are
+# deferred into to_convert and referenced via _let_out!:
+#
+#   \ifnum\pdfstrcmp{#1}{key}=0%  _def_out! or _let_out!
+#   \else%
+#     ...
+#   \fi\fi...
+#
+function _add_options!(io, name, ind, pairs_iter, to_convert, index)
     levels = 0
     for (key, value) in pairs_iter
         levels += 1
@@ -131,14 +133,17 @@ function _add_options!(
     print(io, "\\fi"^levels)
 end
 
-# Emit one complete \newcommand block for `obj`.
-# The [all] key returns the full JSON representation; other keys dispatch
-# into the object's fields/indices.  Scalars yield ?? for any key ≠ all.
-function _convert_one!(
-    io::IO, name::String, ind::Int, obj,
-    to_convert::OrderedDict{Int, Any}, index::Ref{Int},
-    base::Int = 1,
-)
+# Emit one complete \newcommand block for obj. The [all] key returns the full
+# JSON; other keys dispatch via _add_options!. Scalars yield ?? for any key ≠ all:
+#
+#   \newcommand\name[1][all]{%
+#     \ifnum\pdfstrcmp{#1}{all}=0%  _def_out!(JSON)
+#     \else%                         _add_options! (or ?? for scalars)
+#     \fi
+#     \name@out
+#   }
+#
+function _convert_one!(io, name, ind, obj, to_convert, index, base = 1)
     write(io, raw"\newcommand")
     _write_macro_name!(io, name, ind)
     write(io, "[1][all]{%")

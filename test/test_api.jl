@@ -1,23 +1,43 @@
-@testset "generate_tex" begin
+@testset "write_tex — from data" begin
+    mktempdir() do dir
+        data = OrderedDict("x" => 1, "y" => "hello")
+
+        # explicit tex_file
+        dest = joinpath(dir, "out.tex")
+        write_tex(data, "t"; tex_file = dest)
+        @test isfile(dest)
+        @test read(dest, String) == dumps(data, "t")
+
+        # tex_file inferred from name
+        dest2 = joinpath(dir, "myname.tex")
+        write_tex(data, "myname"; tex_file = dest2)
+        @test isfile(dest2)
+        @test occursin("\\myname", read(dest2, String))
+
+        # name omitted — should error with helpful message
+        @test_throws ArgumentError write_tex(data)
+    end
+end
+
+@testset "write_tex — from JSON file" begin
     mktempdir() do dir
         json = joinpath(@__DIR__, "test.json")
 
         # explicit name and output path
         dest = joinpath(dir, "out.tex")
-        generate_tex(json; name = "data", tex_file = dest)
+        write_tex(json, "data"; tex_file = dest)
         @test isfile(dest)
-        @test read(dest, String) == TEX   # must match dumps output for same input
+        @test read(dest, String) == TEX
 
         # explicit name only — tex_file inferred from json path
         cp(json, joinpath(dir, "mydata.json"))
-        generate_tex(joinpath(dir, "mydata.json"); name = "mydata")
-        inferred_tex = joinpath(dir, "mydata.tex")
-        @test isfile(inferred_tex)
-        @test occursin("\\mydata", read(inferred_tex, String))
+        write_tex(joinpath(dir, "mydata.json"), "mydata")
+        @test isfile(joinpath(dir, "mydata.tex"))
+        @test occursin("\\mydata", read(joinpath(dir, "mydata.tex"), String))
 
         # both inferred from filename
         cp(json, joinpath(dir, "other.json"))
-        generate_tex(joinpath(dir, "other.json"))
+        write_tex(joinpath(dir, "other.json"))
         @test isfile(joinpath(dir, "other.tex"))
         inferred = read(joinpath(dir, "other.tex"), String)
         @test startswith(inferred, "\\makeatletter")

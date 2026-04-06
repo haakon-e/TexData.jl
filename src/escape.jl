@@ -21,7 +21,7 @@ const LATEX_ESCAPES = Dict{Char,String}(
 # IOBuffer avoids the O(n²) cost of repeated string concatenation.
 # write(io, c::Char) emits the character directly with no heap allocation,
 # unlike string(c) which would create a one-character String per call.
-function escape_latex(s::AbstractString)
+function escape_latex(s)
     io = IOBuffer()
     for c in s
         write(io, get(LATEX_ESCAPES, c, c))

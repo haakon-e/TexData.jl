@@ -45,36 +45,36 @@ const _PERF_LARGE = OrderedDict{String,Any}(
     N = 10   # runs for minimum; keeps test fast while suppressing noise
 
     # small fixture
-    dumps("data", TEST_JSON)   # JIT warm-up
-    t_small = minimum(@elapsed(dumps("data", TEST_JSON)) for _ in 1:N)
+    dumps(TEST_JSON, "data")   # JIT warm-up
+    t_small = minimum(@elapsed(dumps(TEST_JSON, "data")) for _ in 1:N)
     @test t_small < 1e-3       # < 1 ms  (observed ≈ 26 µs)
 
     # large fixture
-    dumps("bench", _PERF_LARGE)   # JIT warm-up
-    t_large = minimum(@elapsed(dumps("bench", _PERF_LARGE)) for _ in 1:N)
+    dumps(_PERF_LARGE, "bench")   # JIT warm-up
+    t_large = minimum(@elapsed(dumps(_PERF_LARGE, "bench")) for _ in 1:N)
     @test t_large < 5e-3           # < 5 ms  (observed ≈ 115 µs)
 end
 
 @testset "dumps — allocation budget" begin
-    dumps("data", TEST_JSON)                            # JIT warm-up
-    @test @allocated(dumps("data", TEST_JSON)) < 35_000    # observed ≈ 22 kB
+    dumps(TEST_JSON, "data")                            # JIT warm-up
+    @test @allocated(dumps(TEST_JSON, "data")) < 35_000    # observed ≈ 22 kB
 
-    dumps("bench", _PERF_LARGE)                         # JIT warm-up
-    @test @allocated(dumps("bench", _PERF_LARGE)) < 120_000   # observed ≈ 78 kB
+    dumps(_PERF_LARGE, "bench")                         # JIT warm-up
+    @test @allocated(dumps(_PERF_LARGE, "bench")) < 120_000   # observed ≈ 78 kB
 end
 
-@testset "generate_tex — timing and allocation budget" begin
+@testset "write_tex (JSON) — timing and allocation budget" begin
     N = 10
     json = joinpath(@__DIR__, "test.json")
 
     mktempdir() do dir
         out = joinpath(dir, "out.tex")
 
-        generate_tex(json; name = "data", tex_file = out)   # JIT warm-up
+        write_tex(json, "data"; tex_file = out)   # JIT warm-up
 
-        t = minimum(@elapsed(generate_tex(json; name = "data", tex_file = out)) for _ in 1:N)
+        t = minimum(@elapsed(write_tex(json, "data"; tex_file = out)) for _ in 1:N)
         @test t < 2e-3   # < 2 ms  (observed ≈ 93 µs; includes JSON parse + write)
 
-        @test @allocated(generate_tex(json; name = "data", tex_file = out)) < 40_000   # observed ≈ 26 kB
+        @test @allocated(write_tex(json, "data"; tex_file = out)) < 40_000   # observed ≈ 26 kB
     end
 end

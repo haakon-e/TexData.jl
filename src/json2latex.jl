@@ -1,43 +1,41 @@
 """
     json2latex
 
-Convert JSON/Julia data structures into self-contained LaTeX macro definitions.
+Make Julia data accessible directly in LaTeX documents via `\\name[key]` macros.
 
-The generated macros support optional key arguments for field access and work
-with pdfLaTeX and LuaLaTeX (`\\pdfstrcmp` is required).
+Supports pdfLaTeX and LuaLaTeX (`\\pdfstrcmp` is required).
 
 # Quick start
 
-**From a Julia `Dict` — no extra packages needed:**
+**Write TeX directly from Julia data:**
 
 ```julia
 using json2latex
 
-tex = dumps("data", Dict("title" => "My paper", "year" => 2024))
-write("data.tex", tex)
-# \\data[title] → "My paper",  \\data[year] → "2024",  \\data → full JSON
+write_tex(Dict("title" => "My paper", "year" => 2024), "data")
+# → data.tex in the current directory
 ```
 
 **From a JSON file — name and output path inferred from the filename:**
 
 ```julia
-generate_tex("data.json")                               # → data.tex, \\data
-generate_tex("data.json"; tex_file = "build/data.tex")  # custom output path
+write_tex("data.json")   # → data.tex, \\data
 ```
 
 **Incremental merge workflow** (accumulate data across runs, regenerate TeX):
 
 ```julia
-generate_tex!("data.json", Dict("version" => "2.0"))
+sync_tex!("data.json", Dict("version" => "2.0"))
 ```
 
 !!! note
     When key order in the output must match the source JSON, pass an
     `OrderedDict` to `dumps` — it is re-exported by this package so no
-    additional `using` statement is required.  `generate_tex` and
-    `generate_tex!` always preserve order automatically.
+    additional `using` statement is required.
 
-See also: [`dumps`](@ref), [`generate_tex`](@ref), [`generate_tex!`](@ref).
+See the [LaTeX integration](@ref) guide for how to use the generated `.tex` file in a document.
+
+See also: [`dumps`](@ref), [`write_tex`](@ref), [`sync_tex!`](@ref).
 """
 module json2latex
 
@@ -45,7 +43,7 @@ import JSON
 using ArgParse
 using OrderedCollections: OrderedDict
 
-export dumps, generate_tex, generate_tex!, OrderedDict
+export dumps, write_tex, sync_tex!, OrderedDict
 
 include("escape.jl")
 include("convert.jl")
@@ -55,7 +53,7 @@ include("convert.jl")
 # ---------------------------------------------------------------------------
 
 """
-    dumps(name, obj) -> String
+    dumps(obj, name) -> String
 
 Convert a nested Julia structure (`Dict`, `Vector`, `NamedTuple`, or scalar)
 into a string of LaTeX commands that define `\\name`, `\\name[key]`,
@@ -74,18 +72,18 @@ first element `\\name[1]`; `base=0` gives 0-based indexing.
 # Examples
 
 ```julia
-tex = dumps("cfg", Dict("title" => "My paper", "n" => 42))
+tex = dumps(Dict("title" => "My paper", "n" => 42), "cfg")
 # \\cfg[title] → "My paper",  \\cfg[n] → "42",  \\cfg → full JSON
 ```
 
 Nested structures relay to sub-commands automatically:
 
 ```julia
-tex = dumps("cfg", Dict("colors" => ["red", "blue"]))
+tex = dumps(Dict("colors" => ["red", "blue"]), "cfg")
 # \\cfg[colors][1] → "red",  \\cfg[colors][2] → "blue"  (default base=1)
 ```
 """
-function dumps(name::AbstractString, obj; base::Int = 1)
+function dumps(obj, name; base = 1)
     check_name(name)
     sname = String(name)
     io = IOBuffer()
@@ -105,92 +103,104 @@ _name_from_json(json_file) = splitext(basename(json_file))[1]
 _tex_from_json(json_file) = splitext(json_file)[1] * ".tex"
 
 """
-    generate_tex(json_file; name, tex_file)
+    write_tex(name, data; tex_file, base=1)
 
-Read `json_file` and write LaTeX macro definitions to `tex_file`, using
-`name` as the command name.  Both `name` and `tex_file` are inferred from
-`json_file` when omitted:
+Export `data` to a `.tex` file so it can be accessed directly in LaTeX via `\\name[key]`.
 
-- `name` defaults to the filename stem (e.g. `"data"` from `"data.json"`).
-- `tex_file` defaults to `json_file` with the extension replaced by `.tex`,
-  placing the output next to the source JSON.
+# Arguments
+- `name`: Name for the LaTeX macro, e.g. `"cfg"` defines `\\cfg`, access with `\\cfg[key]`, …
+- `data`: A `Dict`-like object to convert
 
-Key order from the source JSON is always preserved.
+# Keyword arguments
+- `tex_file`: output path, (default: `<name>.tex`)
+- `base`: start index for list elements (default: `1`).
 
 # Examples
 
 ```julia
-using json2latex
-generate_tex("data.json")  # → data.tex, \\data
-generate_tex("inputs/data.json"; tex_file="build/data.tex")
+# From a Julia dict — name is required
+write_tex("cfg", Dict("lr" => 0.001, "epochs" => 50))  # → cfg.tex
 ```
 
-See also: [`dumps`](@ref), [`generate_tex!`](@ref).
+See the [LaTeX integration](@ref) guide for how to use the generated `.tex` file in a document.
+
+See also: [`dumps`](@ref), [`sync_tex!`](@ref).
 """
-function generate_tex(json_file;
-    name     = _name_from_json(json_file),
-    tex_file = _tex_from_json(json_file),
-    base::Int = 1,
-)
-    obj = JSON.parsefile(json_file; dicttype = OrderedDict)
+write_tex(name, data; tex_file = "$name.tex", base = 1) =
     open(tex_file, "w") do io
-        write(io, dumps(name, obj; base))
+        write(io, dumps(data, name; base))
     end
-    nothing
-end
 
 """
-    generate_tex!(json_file, new_data; name, tex_file, overwrite)
+    sync_tex!(json_file, [new_data]; [name], [tex_file], [overwrite=false], [base=1])
 
-Merge `new_data` into `json_file`, then regenerate `tex_file` with
-[`dumps`](@ref).  If `json_file` does not yet exist (or `overwrite=true`)
-it is created from scratch.
+Merge `new_data` (if provided) into `json_file`, then generate `tex_file`.
 
-`name` and `tex_file` are inferred from `json_file` when omitted (see
-[`generate_tex`](@ref) for the inference rules).
+`name` and `tex_file` are inferred from `json_file` when omitted:
+`name` defaults to the filename stem; `tex_file` to the same path with a
+`.tex` extension.
 
 This is intended for **incremental update** workflows where a JSON backing
-store accumulates data across multiple script runs.  For one-shot file
-conversion use [`generate_tex`](@ref) instead.
+store accumulates data across multiple calls or script runs.
+For direct TeX file generation without intermediate storage,
+use [`write_tex`](@ref) instead.
 
 # Arguments
 - `json_file`: path to the JSON backing store.
 - `new_data`: any `Dict`-like object whose entries are merged into the stored JSON.
 
 # Keyword arguments
-- `name`: LaTeX macro name (default: stem of `json_file`).
+- `name`: LaTeX macro name (default: stem of `json_file`, without extension).
 - `tex_file`: output path (default: `json_file` with `.tex` extension).
-- `overwrite`: if `true`, ignore any existing `json_file` (default `false`).
+- `overwrite`: if `true`, overwrite `json_file`, if it exists (default `false`).
+- `base`: base for list indexing (default: `1`).
+
+!!! NOTE: Recursive merging of the `json_file` and `new_data` is currently not supported.
 
 # Example
 
 ```julia
 # First run: creates data.json and data.tex
-generate_tex!("data.json", Dict("version" => "1.0"))
+sync_tex!("data.json", Dict("version" => "1.0"))
 
-# Later run: merges new keys, regenerates both files
-generate_tex!("data.json", Dict("accuracy" => 0.95))
+# Later run: merges new keys, updates both files
+sync_tex!("data.json", Dict("accuracy" => 0.95))
 ```
+
+To regenerate data.tex from data.json without updating any entires, simply call
+
+```julia
+sync_tex!(json_file)
+```
+
+See the [LaTeX integration](@ref) guide for how to use the generated `.tex` file in a document.
+
+See [`write_tex`](@ref) for direct Dict-to-TeX conversion and 
+    [`dumps`](@ref) to obtain the string that is written to tex.
 """
-function generate_tex!(
+function sync_tex!(
     json_file,
-    new_data;
-    name      = _name_from_json(json_file),
-    tex_file  = _tex_from_json(json_file),
+    new_data = OrderedDict();
+    name = _name_from_json(json_file),
+    tex_file = _tex_from_json(json_file),
     overwrite = false,
-    base::Int = 1,
+    base = 1,
 )
+    # TODO: Add NamedTuple support
+    # TODO: Add recursive merge!
     T = OrderedDict{String, Any}
     current = (!overwrite && isfile(json_file)) ?
               JSON.parsefile(json_file; dicttype = OrderedDict) : T()
     merge!(current, T(new_data))
+    if !overwrite && isempty(current)
+        json_str = isfile(json_file) ? "Set `overwrite=true` to clear existing JSON/TeX file" : ""
+        @warn "No data to write. $json_str"
+        return nothing
+    end
     open(json_file, "w") do io
         JSON.print(io, current, 2)
     end
-    open(tex_file, "w") do io
-        write(io, dumps(name, current; base))
-    end
-    nothing
+    write_tex(current, name; tex_file, base)
 end
 
 # ---------------------------------------------------------------------------
@@ -199,33 +209,33 @@ end
 
 function parse_commandline()
     s = ArgParseSettings(
-        prog        = "json2latex",
+        prog = "json2latex",
         description = "Convert a JSON file into LaTeX macro definitions.\n\n\
                        The generated macros are compatible with pdfLaTeX and LuaLaTeX. \
                        Use \\<name>[key] to access individual fields, \
                        \\<name> for the full JSON.",
-        version     = string(pkgversion(json2latex)),
+        version = string(pkgversion(json2latex)),
     )
     @add_arg_table! s begin
         "input"
-            help     = "path to the input JSON file"
-            required = true
+        help = "path to the input JSON file"
+        required = true
         "--name", "-n"
-            help    = "LaTeX command name, ASCII letters only \
-                       (default: filename stem of input)"
-            metavar = "NAME"
+        help = "LaTeX command name, ASCII letters only \
+                (default: filename stem of input)"
+        metavar = "NAME"
         "--output", "-o"
-            help    = "output path for the generated .tex file \
-                       (default: input with .tex extension)"
-            metavar = "PATH"
+        help = "output path for the generated .tex file \
+                (default: input with .tex extension)"
+        metavar = "PATH"
         "--base", "-b"
-            help    = "starting index for list elements (default: 1)"
-            metavar = "N"
-            arg_type = Int
-            default  = 1
+        help = "starting index for list elements (default: 1)"
+        metavar = "N"
+        arg_type = Int
+        default = 1
         "--version", "-v"
-            action  = :show_version
-            help    = "show version and exit"
+        action = :show_version
+        help = "show version and exit"
     end
     s
 end
@@ -235,13 +245,12 @@ function (@main)(ARGS)
     isnothing(args) && return 0
 
     kw = filter(p -> !isnothing(p.second), [
-        :name     => args["name"],
         :tex_file => args["output"],
-        :base     => args["base"],
+        :base => args["base"],
     ])
 
     try
-        generate_tex(args["input"]; kw...)
+        write_tex(args["input"], args["name"]; kw...)
     catch e
         print(stderr, "Error: ")
         showerror(stderr, e)
