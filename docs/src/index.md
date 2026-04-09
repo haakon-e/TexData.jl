@@ -1,4 +1,4 @@
-# json2latex.jl
+# TexData.jl
 
 A Julia package for making data accessible directly in LaTeX documents.
 
@@ -7,14 +7,14 @@ A Julia package for making data accessible directly in LaTeX documents.
 ## Quick start
 
 ```julia
-using Pkg; Pkg.add(url="https://github.com/haakon-e/json2latex.jl")
-using Pkg; Pkg.Apps.add(url="https://github.com/haakon-e/json2latex.jl")  # as a CLI tool (Julia ≥ 1.12)
+using Pkg; Pkg.add(url="https://github.com/haakon-e/TexData.jl")
+using Pkg; Pkg.Apps.add(url="https://github.com/haakon-e/TexData.jl")  # as a CLI tool (Julia ≥ 1.12)
 ```
 
 Julia Apps are installed to `~/.julia/bin/`. Ensure this directory is in your `PATH` to use the CLI tool.
 
 ```julia
-using json2latex
+using TexData
 
 results = Dict(
     "model"    => "ResNet-50",
@@ -79,13 +79,13 @@ Pass `overwrite = true` to discard existing JSON data and start fresh.
 If you edit the JSON file manually or with another tool, generate the TeX file
 directly from the command line (requires App installation)
 ```bash
-json2latex results.json
-json2latex results.json --name res --output build/res.tex
+texdata results.json
+texdata results.json --name res --output build/res.tex
 ```
 
 Learn about the CLI options by
 ```bash
-json2latex --help
+texdata --help
 ```
 
 ---
@@ -105,7 +105,7 @@ json2latex --help
 ## API reference
 
 ```@docs
-json2latex
+TexData
 write_tex
 sync_tex!
 dumps
@@ -125,4 +125,4 @@ macro reference table.
 
 This is a Julia port of the [json2latex](https://github.com/CameronDevine/json2latex) Python library.
 
-MIT License — see [LICENSE](https://github.com/haakon-e/json2latex.jl/blob/main/LICENSE).
+MIT License — see [LICENSE](https://github.com/haakon-e/TexData.jl/blob/main/LICENSE).

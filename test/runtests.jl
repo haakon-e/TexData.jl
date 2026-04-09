@@ -1,7 +1,7 @@
 using Test
 import JSON
-using json2latex
-using json2latex: escape_latex, to_roman, check_name   # internal helpers under test
+using TexData
+using TexData: escape_latex, to_roman, check_name   # internal helpers under test
 
 include("helpers.jl")   # resolve_tex and its sub-functions
 
@@ -9,7 +9,7 @@ include("helpers.jl")   # resolve_tex and its sub-functions
 const TEST_JSON = JSON.parsefile(joinpath(@__DIR__, "test.json"); dicttype = OrderedDict)
 const TEX = dumps(TEST_JSON, "data")
 
-@testset "json2latex" begin
+@testset "TexData" begin
     include("test_escape.jl")
     include("test_convert.jl")
     include("test_integration.jl")

@@ -1,5 +1,5 @@
 """
-    json2latex
+    TexData
 
 Make Julia data accessible directly in LaTeX documents via `\\name[key]` macros.
 
@@ -10,7 +10,7 @@ Supports pdfLaTeX and LuaLaTeX (`\\pdfstrcmp` is required).
 **Write TeX directly from Julia data:**
 
 ```julia
-using json2latex
+using TexData
 
 write_tex(Dict("title" => "My paper", "year" => 2024), "data")
 # → data.tex in the current directory
@@ -37,7 +37,7 @@ See the [LaTeX integration](@ref) guide for how to use the generated `.tex` file
 
 See also: [`dumps`](@ref), [`write_tex`](@ref), [`sync_tex!`](@ref).
 """
-module json2latex
+module TexData
 
 import JSON
 using ArgParse
@@ -209,12 +209,12 @@ end
 
 function parse_commandline()
     s = ArgParseSettings(
-        prog = "json2latex",
+        prog = "TexData",
         description = "Convert a JSON file into LaTeX macro definitions.\n\n\
                        The generated macros are compatible with pdfLaTeX and LuaLaTeX. \
                        Use \\<name>[key] to access individual fields, \
                        \\<name> for the full JSON.",
-        version = string(pkgversion(json2latex)),
+        version = string(pkgversion(TexData)),
     )
     @add_arg_table! s begin
         "input"
@@ -260,4 +260,4 @@ function (@main)(ARGS)
     return 0
 end
 
-end # module json2latex
+end # module TexData

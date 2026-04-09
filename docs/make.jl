@@ -1,8 +1,8 @@
-using Documenter, json2latex
+using Documenter, TexData
 
 makedocs(
-    sitename = "json2latex.jl",
-    modules  = [json2latex],
+    sitename = "TexData.jl",
+    modules  = [TexData],
     format   = Documenter.HTML(prettyurls = false),
     pages    = [
         "Home"              => "index.md",

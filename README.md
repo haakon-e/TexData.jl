@@ -1,9 +1,9 @@
-# json2latex.jl
+# TexData.jl
 
 Make Julia data accessible directly in LaTeX documents — no more pasting values by hand.
 
 ```julia
-using json2latex
+using TexData
 write_tex(Dict("accuracy" => 0.974, "n" => 2000, "lr" => 0.001, "epochs" => 50), "results")
 ```
 
@@ -34,23 +34,23 @@ View this code sample as a pdf document [here](https://www.overleaf.com/read/rwj
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/haakon-e/json2latex.jl")
+Pkg.add(url="https://github.com/haakon-e/TexData.jl")
 ```
 
 ### As a CLI app (Julia ≥ 1.12)
 
 ```julia
 using Pkg
-Pkg.Apps.add(url="https://github.com/haakon-e/json2latex.jl")
+Pkg.Apps.add(url="https://github.com/haakon-e/TexData.jl")
 ```
-This installs the `json2latex` command to `~/.julia/bin/`. Make sure this directory is in your `PATH`.
+This installs the `TexData` command to `~/.julia/bin/`. Make sure this directory is in your `PATH`.
 
 ---
 
 ## Usage
 
 ```julia
-using json2latex
+using TexData
 
 results = Dict("accuracy" => 0.974, "n" => 2000, "lr" => 0.001, "epochs" => 50)
 name = "results"   # becomes \results in LaTeX
@@ -73,12 +73,12 @@ If you prefer to maintain the JSON file manually or use it from another tool, ge
 TeX from the command line:
 
 ```bash
-json2latex results.json               # → results.tex, \results
-json2latex results.json --name res    # use a different macro name
-json2latex results.json --output paper/results.tex
+texdata results.json               # → results.tex, \results
+texdata results.json --name res    # use a different macro name
+texdata results.json --output paper/results.tex
 ```
 
-See the [documentation](https://haakon-e.github.io/json2latex.jl) for the full API reference
+See the [documentation](https://haakon-e.github.io/TexData.jl) for the full API reference
 and LaTeX integration guide.
 
 ---
