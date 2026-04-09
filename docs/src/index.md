@@ -37,7 +37,7 @@ write_tex(results, "results")
 Then easily insert the values into your LaTeX document:
 
 ```latex
-\input{results}
+\input{results}  % put results.tex in the same directory as your .tex file
 
 % In prose:
 We evaluate \results[model] on the \results[task1] task,

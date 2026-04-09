@@ -7,6 +7,7 @@ Place the generated `.tex` file anywhere LaTeX can find it and load it with
 
 ```latex
 \documentclass{article}
+% Put results.tex in the same directory as your .tex file
 \input{results}   % the .tex suffix is omitted by convention
 \begin{document}
   ...

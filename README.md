@@ -31,7 +31,7 @@ then easily insert the values into your LaTeX document:
 
 ```latex
 \documentclass{article}
-\input{results}
+\input{results}  % put results.tex in the same directory as your .tex file
 \begin{document}
 % In prose:
 The model achieved \results[accuracy] accuracy on \results[n] test samples.
