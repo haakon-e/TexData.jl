@@ -27,12 +27,15 @@ using TexData
 write_tex(Dict("accuracy" => 0.974, "n" => 2000, "lr" => 0.001, "epochs" => 50), "results")
 ```
 
-then easily insert the values into your LaTeX document:
+This will create a `results.tex` file in the current directory.
+Place this file in a directory where LaTeX can find it, 
+for example the same directory as your main `.tex` file.
 
-```latex
-\documentclass{article}
-\input{results}  % put results.tex in the same directory as your .tex file
-\begin{document}
+Then easily insert the values into your LaTeX document:
+
+```tex
+\input{results}
+
 % In prose:
 The model achieved \results[accuracy] accuracy on \results[n] test samples.
 
@@ -43,7 +46,6 @@ The model achieved \results[accuracy] accuracy on \results[n] test samples.
 
 % Inline math:
 Training used learning rate $\eta = \results[lr]$ for \results[epochs] epochs.
-\end{document}
 ```
 
 View this code sample as a pdf document [here](https://www.overleaf.com/read/rwjkvpdbtqjv#a7cc84).

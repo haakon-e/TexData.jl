@@ -6,7 +6,7 @@
         dest = joinpath(dir, "out.tex")
         write_tex("t", data; tex_file = dest)
         @test isfile(dest)
-        @test read(dest, String) == dumps(data, "t")
+        @test read(dest, String) == dumps("t", data)
 
         # tex_file inferred from name
         dest2 = joinpath(dir, "myname.tex")

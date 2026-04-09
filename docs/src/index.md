@@ -13,8 +13,10 @@ Make Julia data accessible directly in LaTeX documents — no more pasting and u
 ## Quick start
 
 ```julia
+# Install as a package
 using Pkg; Pkg.add(url="https://github.com/haakon-e/TexData.jl")
-using Pkg; Pkg.Apps.add(url="https://github.com/haakon-e/TexData.jl")  # as a CLI tool (Julia ≥ 1.12)
+# Install as a CLI tool (Julia ≥ 1.12) → provides `texdata` terminal command
+using Pkg; Pkg.Apps.add(url="https://github.com/haakon-e/TexData.jl")
 ```
 
 Julia Apps are installed to `~/.julia/bin/`. Ensure this directory is in your `PATH` to use the CLI tool.
@@ -33,24 +35,28 @@ results = Dict(
 
 write_tex(results, "results")
 ```
+This will create a `results.tex` file in the current directory.
+Place this file in a directory where LaTeX can find it, 
+for example the same directory as your main `.tex` file.
 
 Then easily insert the values into your LaTeX document:
 
-```latex
-\input{results}  % put results.tex in the same directory as your .tex file
+```tex
+\input{results}
 
 % In prose:
-We evaluate \results[model] on the \results[task1] task,
-achieving \results[accuracy] accuracy.
+The model achieved \results[accuracy] accuracy on \results[n] test samples.
 
 % In an equation:
 \begin{equation}
-    \mathcal{L} = f\!\left(\eta = \results[config][lr]\right)
+    \mathcal{L}_{\results[epochs]} = \results[accuracy]
 \end{equation}
 
 % Inline math:
-Training ran for $n = \results[config][epochs]$ epochs.
+Training used learning rate $\eta = \results[lr]$ for \results[epochs] epochs.
 ```
+
+View this code sample as a pdf document [here](https://www.overleaf.com/read/rwjkvpdbtqjv#a7cc84).
 
 ---
 
@@ -80,11 +86,12 @@ sync_tex!("results.json", Dict("accuracy" => 0.993))
 ```
 Pass `overwrite = true` to discard existing JSON data and start fresh.
 
-!!! NOTE: Recursive merge is currently not supported. That is, if the value of
-          a top-level key differ between the new data and JSON file, the value
-          of the new data overwrites all data in the JSON file at that key.
+!!! note "NOTE: Recursive merge is currently not supported"
+    That is, if the value of
+    a top-level key differ between the new data and JSON file, the value
+    of the new data overwrites all data in the JSON file at that key.
 
-### CLI
+### Command line interface (CLI)
 
 If you edit the JSON file manually or with another tool, generate the TeX file
 directly from the command line (requires App installation)

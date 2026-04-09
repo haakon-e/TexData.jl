@@ -7,7 +7,7 @@ include("helpers.jl")   # resolve_tex and its sub-functions
 
 # Shared fixtures used by test_convert.jl, test_integration.jl and test_api.jl.
 const TEST_JSON = JSON.parsefile(joinpath(@__DIR__, "test.json"); dicttype = OrderedDict)
-const TEX = dumps(TEST_JSON, "data")
+const TEX = dumps("data", TEST_JSON)
 
 @testset "TexData" begin
     include("test_escape.jl")

@@ -27,13 +27,13 @@ end
 
 @testset "dumps — structure" begin
     # Boilerplate wrapping
-    tex = dumps(OrderedDict("x" => 1), "data")
+    tex = dumps("data", OrderedDict("x" => 1))
     @test startswith(tex, "\\makeatletter%\n")
     @test endswith(tex, "%\n\\makeatother%")
     @test occursin("\\newcommand\\data[1][all]{%", tex)
 
     # Single scalar key
-    tex = dumps(OrderedDict("foo" => 42), "data")
+    tex = dumps("data", OrderedDict("foo" => 42))
     @test occursin("\\ifnum\\pdfstrcmp{#1}{foo}=0%", tex)
     @test occursin("42", tex)
 
@@ -41,37 +41,37 @@ end
     @test occursin("??", tex)
 
     # Nested list relays to a sub-command (1-based by default)
-    tex = dumps(OrderedDict("arr" => [10, 20]), "data")
+    tex = dumps("data", OrderedDict("arr" => [10, 20]))
     @test occursin("\\let\\data@out\\data@I%", tex)
     @test occursin("\\newcommand\\data@I[1][all]{%", tex)
     @test occursin("\\ifnum\\pdfstrcmp{#1}{1}=0%", tex)
     @test occursin("\\ifnum\\pdfstrcmp{#1}{2}=0%", tex)
 
     # base=0 gives 0-based indexing
-    tex0 = dumps(OrderedDict("arr" => [10, 20]), "data"; base = 0)
+    tex0 = dumps("data", OrderedDict("arr" => [10, 20]); base = 0)
     @test occursin("\\ifnum\\pdfstrcmp{#1}{0}=0%", tex0)
     @test occursin("\\ifnum\\pdfstrcmp{#1}{1}=0%", tex0)
 
     # Negative numbers get {-} escape
-    tex = dumps(OrderedDict("v" => -1.5), "result")
+    tex = dumps("result", OrderedDict("v" => -1.5))
     @test occursin("{-}1.5", tex)
 
     # Invalid name raises
-    @test_throws ArgumentError dumps(Dict(), "bad_name")
+    @test_throws ArgumentError dumps("bad_name", Dict())
 end
 
 @testset "dumps — list index base" begin
     v = ["x", "y", "z"]
 
     # default: 1-based
-    tex1 = dumps(v, "t")
+    tex1 = dumps("t", v)
     @test resolve_tex(tex1, "t", "1") == "x"
     @test resolve_tex(tex1, "t", "2") == "y"
     @test resolve_tex(tex1, "t", "3") == "z"
     @test resolve_tex(tex1, "t", "0") == "??"   # out of range
 
     # base=0: 0-based
-    tex0 = dumps(v, "t"; base = 0)
+    tex0 = dumps("t", v; base = 0)
     @test resolve_tex(tex0, "t", "0") == "x"
     @test resolve_tex(tex0, "t", "1") == "y"
     @test resolve_tex(tex0, "t", "2") == "z"
@@ -79,7 +79,7 @@ end
 end
 
 @testset "dumps — NamedTuple" begin
-    tex = dumps((x = "hello", y = 42), "data")
+    tex = dumps("data", (x = "hello", y = 42))
     @test occursin("\\ifnum\\pdfstrcmp{#1}{x}=0%", tex)
     @test occursin("\\ifnum\\pdfstrcmp{#1}{y}=0%", tex)
     @test resolve_tex(tex, "data", "x") == "hello"
@@ -89,7 +89,7 @@ end
 @testset "dumps — scalar top-level yields ?? for any key" begin
     # A scalar at the top level has no sub-keys; any key ≠ "all" must
     # return "??".  Tests the else-branch added to _convert_one!.
-    tex = dumps(42, "x")
+    tex = dumps("x", 42)
     @test resolve_tex(tex, "x")          == "42"
     @test resolve_tex(tex, "x", "0")     == "??"
     @test resolve_tex(tex, "x", "field") == "??"

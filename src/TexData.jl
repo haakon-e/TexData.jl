@@ -3,8 +3,6 @@
 
 Make Julia data accessible directly in LaTeX documents via `\\name[key]` macros.
 
-Supports pdfLaTeX and LuaLaTeX (`\\pdfstrcmp` is required).
-
 # Quick start
 
 **Write TeX directly from Julia data:**
@@ -12,26 +10,26 @@ Supports pdfLaTeX and LuaLaTeX (`\\pdfstrcmp` is required).
 ```julia
 using TexData
 
-write_tex(Dict("title" => "My paper", "year" => 2024), "data")
+write_tex("data", Dict("title" => "My paper", "year" => 2024))
 # → data.tex in the current directory
 ```
 
-**From a JSON file — name and output path inferred from the filename:**
+**With JSON as an intermediate file:**
 
 ```julia
-write_tex("data.json")   # → data.tex, \\data
-```
-
-**Incremental merge workflow** (accumulate data across runs, regenerate TeX):
-
-```julia
+# First run: creates/updates data.json and data.tex
 sync_tex!("data.json", Dict("version" => "2.0"))
+
+# Later run: merges new keys, updates both files
+sync_tex!("data.json", Dict("accuracy" => 0.95))
+
+# If you make changes to data.json manually, you can regenerate data.tex with
+sync_tex!("data.json")
 ```
 
 !!! note
-    When key order in the output must match the source JSON, pass an
-    `OrderedDict` to `dumps` — it is re-exported by this package so no
-    additional `using` statement is required.
+    To preserve key order in the JSON file, use `OrderedDict`. 
+    It is re-exported by this package so no additional `using` statement is required.
 
 See the [LaTeX integration guide](@ref) for how to use the generated `.tex` file in a document.
 
@@ -53,7 +51,7 @@ include("convert.jl")
 # ---------------------------------------------------------------------------
 
 """
-    dumps(obj, name) -> String
+    dumps(name, obj) -> String
 
 Convert a nested Julia structure (`Dict`, `Vector`, `NamedTuple`, or scalar)
 into a string of LaTeX commands that define `\\name`, `\\name[key]`,
@@ -72,18 +70,18 @@ first element `\\name[1]`; `base=0` gives 0-based indexing.
 # Examples
 
 ```julia
-tex = dumps(Dict("title" => "My paper", "n" => 42), "cfg")
+tex = dumps("cfg", Dict("title" => "My paper", "n" => 42))
 # \\cfg[title] → "My paper",  \\cfg[n] → "42",  \\cfg → full JSON
 ```
 
 Nested structures relay to sub-commands automatically:
 
 ```julia
-tex = dumps(Dict("colors" => ["red", "blue"]), "cfg")
+tex = dumps("cfg", Dict("colors" => ["red", "blue"]))
 # \\cfg[colors][1] → "red",  \\cfg[colors][2] → "blue"  (default base=1)
 ```
 """
-function dumps(obj, name; base = 1)
+function dumps(name, obj; base = 1)
     check_name(name)
     sname = String(name)
     io = IOBuffer()
@@ -124,11 +122,12 @@ write_tex("cfg", Dict("lr" => 0.001, "epochs" => 50))  # → cfg.tex
 
 See the [LaTeX integration guide](@ref) for how to use the generated `.tex` file in a document.
 
-See also: [`dumps`](@ref), [`sync_tex!`](@ref).
+See [`sync_tex!`](@ref) for an incremental update workflow using JSON as an intermediate file and 
+    [`dumps`](@ref) to obtain the string that is written to tex.
 """
 write_tex(name, data; tex_file = "$name.tex", base = 1) =
     open(tex_file, "w") do io
-        write(io, dumps(data, name; base))
+        write(io, dumps(name, data; base))
     end
 
 """
@@ -155,7 +154,8 @@ use [`write_tex`](@ref) instead.
 - `overwrite`: if `true`, overwrite `json_file`, if it exists (default `false`).
 - `base`: base for list indexing (default: `1`).
 
-!!! NOTE: Recursive merging of the `json_file` and `new_data` is currently not supported.
+!!! note
+    Recursive merging of the `json_file` and `new_data` is currently not supported.
 
 # Example
 

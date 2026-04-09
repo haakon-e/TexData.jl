@@ -45,22 +45,22 @@ const _PERF_LARGE = OrderedDict{String,Any}(
     N = 10   # runs for minimum; keeps test fast while suppressing noise
 
     # small fixture
-    dumps(TEST_JSON, "data")   # JIT warm-up
-    t_small = minimum(@elapsed(dumps(TEST_JSON, "data")) for _ in 1:N)
+    dumps("data", TEST_JSON)   # JIT warm-up
+    t_small = minimum(@elapsed(dumps("data", TEST_JSON)) for _ in 1:N)
     @test t_small < 1e-3       # < 1 ms  (observed ≈ 26 µs)
 
     # large fixture
-    dumps(_PERF_LARGE, "bench")   # JIT warm-up
-    t_large = minimum(@elapsed(dumps(_PERF_LARGE, "bench")) for _ in 1:N)
+    dumps("bench", _PERF_LARGE)   # JIT warm-up
+    t_large = minimum(@elapsed(dumps("bench", _PERF_LARGE)) for _ in 1:N)
     @test t_large < 5e-3           # < 5 ms  (observed ≈ 115 µs)
 end
 
 @testset "dumps — allocation budget" begin
-    dumps(TEST_JSON, "data")                            # JIT warm-up
-    @test @allocated(dumps(TEST_JSON, "data")) < 35_000    # observed ≈ 22 kB
+    dumps("data", TEST_JSON)                            # JIT warm-up
+    @test @allocated(dumps("data", TEST_JSON)) < 35_000    # observed ≈ 22 kB
 
-    dumps(_PERF_LARGE, "bench")                         # JIT warm-up
-    @test @allocated(dumps(_PERF_LARGE, "bench")) < 120_000   # observed ≈ 78 kB
+    dumps("bench", _PERF_LARGE)                         # JIT warm-up
+    @test @allocated(dumps("bench", _PERF_LARGE)) < 120_000   # observed ≈ 78 kB
 end
 
 @testset "sync_tex! (JSON) — timing and allocation budget" begin
