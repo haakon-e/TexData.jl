@@ -53,6 +53,17 @@ function _write_out_macro_name!(io, name, ind)
 end
 
 # ---------------------------------------------------------------------------
+# JSON pretty-printing (order-preserving)
+# ---------------------------------------------------------------------------
+
+# JSON.jl ≥ 1.5 sorts AbstractDict keys by default; opt out with sort_keys.
+_json_pretty(obj) = @static if pkgversion(JSON) >= v"1.5"
+    chomp(JSON.json(obj; pretty = 2, sort_keys = false))
+else
+    chomp(JSON.json(obj, 2))
+end
+
+# ---------------------------------------------------------------------------
 # TeX emitters
 # ---------------------------------------------------------------------------
 
@@ -150,7 +161,7 @@ function _convert_one!(io, name, ind, obj, to_convert, index, base = 1)
     print(io, "\n  ")
     print(io, "\\ifnum\\pdfstrcmp{#1}{all}=0%")
     print(io, "\n    ")
-    _def_out!(io, name, ind, chomp(JSON.json(obj, 2)))
+    _def_out!(io, name, ind, _json_pretty(obj))
     print(io, "\n  ")
     print(io, "\\else%")
     print(io, "\n    ")
